@@ -9,6 +9,9 @@ jobs:
   renew:
     name: 执行续期检测
     runs-on: ubuntu-latest
+    permissions:
+      actions: write   # 允许删除 workflow runs
+      contents: read
     timeout-minutes: 15
 
     steps:
@@ -43,3 +46,16 @@ jobs:
           name: aclclouds-screenshots
           path: screenshots/
           retention-days: 3
+
+      - name: 删除当前 workflow 的旧 runs（保留最近2个）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "当前 workflow: ${{ github.workflow }}"
+          gh api repos/${{ github.repository }}/actions/workflows/${{ github.workflow }}/runs \
+            --paginate \
+            --jq '.workflow_runs[2:][] | .id' \
+            | while read id; do
+                echo "Deleting run $id"
+                gh api -X DELETE repos/${{ github.repository }}/actions/runs/$id
+              done
