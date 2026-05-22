@@ -1,13 +1,13 @@
 # ACLClouds 自动续期
 
-基于 GitHub Actions 的 ACLClouds 服务自动续期脚本，每天定时检测到期时间，剩余不足 3 天时自动续期，并通过 Telegram 或 wxpusher 推送通知。
+基于 GitHub Actions 的 ACLClouds 服务自动续期脚本，每天定时检测到期时间，剩余不足 2 天时自动续期，并通过 Telegram 或 wxpusher 推送通知。
 
 ---
 
 ## 功能
 
 - 自动登录 ACLClouds 控制台（含 captcha 模拟）
-- 检测所有项目的到期时间，剩余 ≤ 3 天时触发续期
+- 检测所有项目的到期时间，剩余 ≤ 2 天时触发续期
 - 续期成功后重新获取并打印新的到期时间
 - 支持 Telegram、wxpusher 双渠道推送
 - 每次运行后自动清理旧的 workflow 记录，只保留最近 2 条
@@ -75,6 +75,6 @@
 
 ## 注意事项
 
-- 续期阈值默认为剩余 **3 天**，如需修改可编辑 `renew.py` 中的 `RENEW_THRESHOLD_DAYS`。
+- 续期阈值默认为剩余 **2 天**，如需修改可编辑 `renew.py` 中的 `RENEW_THRESHOLD_DAYS`。
 - workflow 运行记录默认只保留最近 **2 条**，自动删除更早的记录。
 - 脚本运行日志中的 xsrf-token、captcha token 等敏感字段已自动脱敏，可安全分享日志。
