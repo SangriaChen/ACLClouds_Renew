@@ -242,9 +242,10 @@ class ACLCloudsAPI:
     def get_projects(self):
         url = f"{BASE_URL}/api/client"
         log(f"GET {url}")
-        r = self.session.get(url, timeout=20)
+        r = self.session.get(url, timeout=20, headers={"Referer": f"{BASE_URL}/projects"})
         log(f"  → HTTP {r.status_code}")
         if r.status_code != 200:
+            log_warn(f"  → 响应体: {r.text[:300]}")
             raise RuntimeError(f"获取项目列表失败 HTTP {r.status_code}")
         data = r.json()
         if not isinstance(data, dict) or "data" not in data:
