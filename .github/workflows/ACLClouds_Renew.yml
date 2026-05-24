@@ -23,11 +23,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 安装依赖
-        run: |
-          pip install playwright
-          playwright install chromium --with-deps
-
       - name: 安装并启动 Cloudflare WARP
         run: |
           curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
@@ -36,9 +31,14 @@ jobs:
           sudo apt-get install -y cloudflare-warp
           warp-cli --accept-tos registration new
           warp-cli --accept-tos connect
-          sleep 5
+          sleep 8
           warp-cli --accept-tos status
           curl -s https://cloudflare.com/cdn-cgi/trace | grep ip
+
+      - name: 安装依赖
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
 
       - name: 运行续期脚本
         env:
