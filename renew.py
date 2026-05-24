@@ -223,6 +223,7 @@ class ACLCloudsAPI:
         if r.status_code == 200:
             if self.session.cookies.get("aclclouds_session"):
                 log("登录成功 ✅（aclclouds_session 已设置）")
+                log(f"当前所有 cookie: { {k: v[:6]+'***' for k, v in self.session.cookies.items()} }")
                 return True
             try:
                 data = r.json()
@@ -242,6 +243,7 @@ class ACLCloudsAPI:
     def get_projects(self):
         url = f"{BASE_URL}/api/client"
         log(f"GET {url}")
+        log(f"  → 请求携带 cookie: { {k: v[:6]+'***' for k, v in self.session.cookies.items()} }")
         r = self.session.get(url, timeout=20, headers={"Referer": f"{BASE_URL}/projects"})
         log(f"  → HTTP {r.status_code}")
         if r.status_code != 200:
