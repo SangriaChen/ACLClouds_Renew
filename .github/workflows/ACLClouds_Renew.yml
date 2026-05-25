@@ -52,9 +52,9 @@ jobs:
           # ── 账号2（选填，留空则跳过） ──────────────────
           ACCOUNT2_EMAIL:    ${{ secrets.ACCOUNT2_EMAIL }}
           ACCOUNT2_PASSWORD: ${{ secrets.ACCOUNT2_PASSWORD }}
-          # ── 账号3（选填，留空则跳过） ──────────────────
-          ACCOUNT3_EMAIL:    ${{ secrets.ACCOUNT3_EMAIL }}
-          ACCOUNT3_PASSWORD: ${{ secrets.ACCOUNT3_PASSWORD }}
+          # ── 账号4（选填，留空则跳过） ──────────────────
+          ACCOUNT3_EMAIL:    ${{ secrets.ACCOUNT4_EMAIL }}
+          ACCOUNT3_PASSWORD: ${{ secrets.ACCOUNT4_PASSWORD }}
           # ── 推送配置（全局共用） ───────────────────────
           TG_BOT_TOKEN:       ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:         ${{ secrets.TG_CHAT_ID }}
