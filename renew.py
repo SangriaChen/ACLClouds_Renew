@@ -253,6 +253,14 @@ def run_account(account: dict):
 
             screenshot(page, f"acct{idx}_04_after_login")
 
+            # ── 等待页面JS初始化 ──────────────────────────
+            try:
+                page.wait_for_load_state("networkidle", timeout=20000)
+            except Exception:
+                pass
+            time.sleep(3)
+
+
             # ── 5. 获取项目列表 ───────────────────────────
             result = page.evaluate("""async () => {
                 const r = await fetch('/api/client', {headers: {'Accept': 'application/json'}});
