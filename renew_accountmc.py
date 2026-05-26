@@ -427,17 +427,20 @@ def run():
                     failed_list.append(f"{name}（{str(e)[:80]}）")
 
             try:
-            screenshot(page, "03_final")
-        except Exception:
-            pass
+                screenshot(page, "03_final")
+            except Exception:
+                pass
 
         except Exception as e:
-            screenshot(page, "99_error")
+            try:
+                screenshot(page, "99_error")
+            except Exception:
+                pass
             ctx.close(); browser.close()
             send_all(f"❌ <b>ACLClouds MC账号 脚本异常</b>\n\n{str(e)[:200]}")
             if ENABLE_VIDEO:
                 try:
-                    page.video.save_as("screenshots/mc_error_mc_video.webm")
+                    page.video.save_as("screenshots/mc_error_video.webm")
                 except Exception:
                     pass
             raise
