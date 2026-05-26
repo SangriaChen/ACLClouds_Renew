@@ -1,4 +1,4 @@
-name: ACLClouds 账号3（每5小时）
+name: ACLClouds MC续期
 
 on:
   workflow_dispatch:   # cron-job.org / 手动触发
@@ -14,7 +14,7 @@ on:
 
 jobs:
   renew:
-    name: 账号3 续期 + 离线检测
+    name: MC续期 + 离线检测
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -48,10 +48,10 @@ jobs:
           curl -s --max-time 5 --socks5 127.0.0.1:10808 ifconfig.me
           echo ""
 
-      - name: 运行账号3脚本
+      - name: 运行MC续期脚本
         env:
-          ACCOUNT3_EMAIL:    ${{ secrets.ACCOUNT3_EMAIL }}
-          ACCOUNT3_PASSWORD: ${{ secrets.ACCOUNT3_PASSWORD }}
+          MC_EMAIL:          ${{ secrets.MC_EMAIL }}
+          MC_PASSWORD:       ${{ secrets.MC_PASSWORD }}
           TG_BOT_TOKEN:      ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:        ${{ secrets.TG_CHAT_ID }}
           WXPUSHER_APPTOKEN: ${{ secrets.WXPUSHER_APPTOKEN }}
@@ -59,13 +59,13 @@ jobs:
           # ── 录屏：手动触发时可选，cron-job触发默认false ─
           ENABLE_VIDEO: ${{ github.event.inputs.enable_video || 'false' }}
         run: |
-          python renew_account3.py 2>&1 | tee renew_account3.log
+          python renew_accountmc.py 2>&1 | tee renew_accountmc.log
 
       - name: 上传截图
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: acct3-debug-${{ github.run_number }}
+          name: aclmc-debug-${{ github.run_number }}
           path: screenshots/
           retention-days: 2
 
