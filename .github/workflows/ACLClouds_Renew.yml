@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      enable_video:
+        description: '是否开启录屏'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   renew:
@@ -52,14 +61,19 @@ jobs:
           # ── 账号2（选填，留空则跳过） ──────────────────
           ACCOUNT2_EMAIL:    ${{ secrets.ACCOUNT2_EMAIL }}
           ACCOUNT2_PASSWORD: ${{ secrets.ACCOUNT2_PASSWORD }}
+          # ── 账号3（选填，留空则跳过） ──────────────────
+          ACCOUNT3_EMAIL:    ${{ secrets.ACCOUNT3_EMAIL }}
+          ACCOUNT3_PASSWORD: ${{ secrets.ACCOUNT3_PASSWORD }}
           # ── 账号4（选填，留空则跳过） ──────────────────
-          ACCOUNT3_EMAIL:    ${{ secrets.ACCOUNT4_EMAIL }}
-          ACCOUNT3_PASSWORD: ${{ secrets.ACCOUNT4_PASSWORD }}
+          ACCOUNT4_EMAIL:    ${{ secrets.ACCOUNT4_EMAIL }}
+          ACCOUNT4_PASSWORD: ${{ secrets.ACCOUNT4_PASSWORD }}
           # ── 推送配置（全局共用） ───────────────────────
           TG_BOT_TOKEN:       ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:         ${{ secrets.TG_CHAT_ID }}
           WXPUSHER_APPTOKEN:  ${{ secrets.WXPUSHER_APPTOKEN }}
           WXPUSHER_UID:       ${{ secrets.WXPUSHER_UID }}
+          # ── 录屏：手动触发时可选，schedule默认false ────
+          ENABLE_VIDEO: ${{ github.event.inputs.enable_video || 'false' }}
         run: |
           python renew.py 2>&1 | tee renew.log
 
