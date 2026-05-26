@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ACLClouds 账号3 专用脚本
+ACLClouds MC账号 专用脚本
 - 续期模式：short（剩余 < 2小时 才续期，符合 ACLClouds 限制）
 - 离线检测：每次运行时检查服务是否在线，离线自动发 start 指令并等待 running，失败才推送告警
 - 由 cron-job.org 每5小时触发一次
@@ -20,9 +20,9 @@ PROXY_SERVER = "socks5://127.0.0.1:10808"
 # ── 录屏开关 ──────────────────────────────────────────────
 ENABLE_VIDEO = os.environ.get("ENABLE_VIDEO", "false").strip().lower() == "true"
 
-# ── 账号3 凭据 ────────────────────────────────────────────
-EMAIL    = os.environ.get("ACCOUNT3_EMAIL", "").strip()
-PASSWORD = os.environ.get("ACCOUNT3_PASSWORD", "").strip()
+# ── MC账号 凭据 ────────────────────────────────────────────
+EMAIL    = os.environ.get("MC_EMAIL", "").strip()
+PASSWORD = os.environ.get("MC_PASSWORD", "").strip()
 
 # ── 推送凭据 ──────────────────────────────────────────────
 TG_BOT_TOKEN      = os.environ.get("TG_BOT_TOKEN", "").strip()
@@ -69,7 +69,7 @@ def send_wxpusher(text: str):
         return
     try:
         payload = {"appToken": WXPUSHER_APPTOKEN, "content": text,
-                   "summary": "ACLClouds 账号3 通知", "contentType": 1, "uids": [WXPUSHER_UID]}
+                   "summary": "ACLClouds MC账号 通知", "contentType": 1, "uids": [WXPUSHER_UID]}
         req = Request("https://wxpusher.zjiecode.com/api/send/message",
                       data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
         result = json.loads(urlopen(req, timeout=15).read().decode())
@@ -326,7 +326,7 @@ def run():
             log(f"找到 {len(projects)} 个项目")
 
             if not projects:
-                send_all("⚠️ <b>ACLClouds 账号3</b>\n\n项目列表为空，请检查账号！")
+                send_all("⚠️ <b>ACLClouds MC账号</b>\n\n项目列表为空，请检查账号！")
                 ctx.close(); browser.close()
                 return
 
@@ -434,17 +434,17 @@ def run():
         except Exception as e:
             screenshot(page, "99_error")
             ctx.close(); browser.close()
-            send_all(f"❌ <b>ACLClouds 账号3 脚本异常</b>\n\n{str(e)[:200]}")
+            send_all(f"❌ <b>ACLClouds MC账号 脚本异常</b>\n\n{str(e)[:200]}")
             if ENABLE_VIDEO:
                 try:
-                    page.video.save_as("screenshots/error_video.webm")
+                    page.video.save_as("screenshots/mc_error_mc_video.webm")
                 except Exception:
                     pass
             raise
 
         if ENABLE_VIDEO:
             try:
-                page.video.save_as("screenshots/video.webm")
+                page.video.save_as("screenshots/mc_video.webm")
             except Exception:
                 pass
         ctx.close()
@@ -457,7 +457,7 @@ def run():
 
     # 离线告警（自动启动失败才推送）
     if offline_list:
-        lines = ["🚨 <b>ACLClouds 账号3 服务离线且启动失败！</b>", ""]
+        lines = ["🚨 <b>ACLClouds MC账号 服务离线且启动失败！</b>", ""]
         lines += [f"• {n}" for n in offline_list]
         lines += ["", "已尝试自动启动但超时，请手动检查！", "ACLClouds Auto Renew"]
         send_all("\n".join(lines))
@@ -466,7 +466,7 @@ def run():
     if renewed_list or failed_list:
         lines = []
         if renewed_list:
-            lines += ["✅ <b>ACLClouds 账号3 续期成功</b>", ""]
+            lines += ["✅ <b>ACLClouds MC账号 续期成功</b>", ""]
             lines += [f"• {i}" for i in renewed_list]
         if failed_list:
             lines += ["", "❌ 失败项目："]
@@ -482,7 +482,7 @@ def run():
 
 if __name__ == "__main__":
     if not EMAIL or not PASSWORD:
-        log_error("缺少 ACCOUNT3_EMAIL 或 ACCOUNT3_PASSWORD")
+        log_error("缺少 MC_EMAIL 或 MC_PASSWORD")
         sys.exit(1)
     try:
         run()
