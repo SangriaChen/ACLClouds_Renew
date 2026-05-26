@@ -2,7 +2,7 @@
 """
 ACLClouds 账号3 专用脚本
 - 续期模式：short（剩余 < 2小时 才续期，符合 ACLClouds 限制）
-- 离线检测：续期后 / 每次运行时检查服务是否在线，离线则推送告警
+- 离线检测：每次运行时检查服务是否在线，离线自动发 start 指令并等待 running，失败才推送告警
 - 由 cron-job.org 每5小时触发一次
 """
 
@@ -127,33 +127,109 @@ def screenshot(page, name: str):
 # ── 离线检测：ping 服务管理页面 ──────────────────────────
 def check_server_online(page, identifier: str) -> bool:
     """
-    通过 API 拿到服务器状态字段判断是否在线。
-    ACLClouds 通常在 /api/client/servers/{id} 里有 status / suspended 字段。
+    通过 Pterodactyl /api/client/servers/{id}/resources 获取容器真实运行状态。
+    current_state: running=在线, offline/stopping/starting=离线或异常
     """
     try:
         result = page.evaluate(f"""async () => {{
-            const r = await fetch('/api/client/servers/{identifier}', {{
+            const r = await fetch('/api/client/servers/{identifier}/resources', {{
                 headers: {{'Accept': 'application/json'}}
             }});
             return {{status: r.status, body: await r.text()}};
         }}""")
         if result['status'] != 200:
-            log_warn(f"  离线检测 HTTP {result['status']}")
-            return None   # 无法判断
+            log_warn(f"  离线检测 HTTP {result['status']}，尝试备用检测...")
+            # 备用：检查 suspended 字段
+            result2 = page.evaluate(f"""async () => {{
+                const r = await fetch('/api/client/servers/{identifier}', {{
+                    headers: {{'Accept': 'application/json'}}
+                }});
+                return {{status: r.status, body: await r.text()}};
+            }}""")
+            if result2['status'] != 200:
+                return None
+            data2 = json.loads(result2['body'])
+            attrs2 = data2.get('attributes', data2.get('data', {}).get('attributes', {}))
+            suspended = attrs2.get('suspended', False)
+            log(f"  备用检测: suspended={suspended!r}")
+            return False if suspended else None
         data = json.loads(result['body'])
-        attrs = data.get('attributes', data.get('data', {}).get('attributes', {}))
-        suspended = attrs.get('suspended', False)
-        status    = attrs.get('status', 'unknown')
-        log(f"  服务状态: status={status!r}, suspended={suspended!r}")
-        # suspended=True 或 status 含 offline/stopped 视为离线
-        if suspended:
+        attrs = data.get('attributes', {})
+        current_state = attrs.get('current_state', 'unknown')
+        is_suspended  = attrs.get('is_suspended', False)
+        log(f"  服务状态: current_state={current_state!r}, is_suspended={is_suspended!r}")
+        if is_suspended:
             return False
-        if isinstance(status, str) and status.lower() in ('offline', 'stopped', 'suspended', 'deleted'):
+        if current_state in ('running', 'starting'):
+            return True
+        if current_state in ('offline', 'stopping', 'stopped'):
             return False
-        return True
+        return None  # unknown状态无法判断
     except Exception as e:
         log_warn(f"  离线检测异常: {e}")
         return None
+
+# ── 启动服务器 ───────────────────────────────────────────
+def start_server(page, identifier: str) -> bool:
+    """发送 power/start 指令"""
+    try:
+        result = page.evaluate(f"""async () => {{
+            const xsrf = decodeURIComponent(
+                document.cookie.split('; ')
+                .find(c => c.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1] || ''
+            );
+            const r = await fetch('/api/client/servers/{identifier}/power', {{
+                method: 'POST',
+                headers: {{
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': xsrf
+                }},
+                body: JSON.stringify({{signal: 'start'}})
+            }});
+            return {{status: r.status, body: await r.text()}};
+        }}""")
+        log(f"  start指令 HTTP {result['status']}，body: {result['body'][:100]}")
+        return result['status'] in (200, 204)
+    except Exception as e:
+        log_warn(f"  start指令异常: {e}")
+        return False
+
+def wait_until_running(page, identifier: str, max_wait: int = 120, interval: int = 10) -> bool:
+    """
+    轮询等待服务器变成 running 状态
+    max_wait: 最多等待秒数（默认120秒）
+    interval: 每次轮询间隔秒数
+    """
+    elapsed = 0
+    while elapsed < max_wait:
+        time.sleep(interval)
+        elapsed += interval
+        state = get_server_state(page, identifier)
+        log(f"  等待启动中... {elapsed}s / {max_wait}s，当前状态: {state!r}")
+        if state == 'running':
+            return True
+        if state in ('offline', 'stopped'):
+            # 还没启动起来，继续等
+            pass
+    return False
+
+def get_server_state(page, identifier: str) -> str:
+    """获取服务器当前 current_state"""
+    try:
+        result = page.evaluate(f"""async () => {{
+            const r = await fetch('/api/client/servers/{identifier}/resources', {{
+                headers: {{'Accept': 'application/json'}}
+            }});
+            return {{status: r.status, body: await r.text()}};
+        }}""")
+        if result['status'] != 200:
+            return 'unknown'
+        data = json.loads(result['body'])
+        return data.get('attributes', {}).get('current_state', 'unknown')
+    except Exception:
+        return 'unknown'
 
 # ── 主流程 ────────────────────────────────────────────────
 def run():
@@ -262,11 +338,23 @@ def run():
 
                 log(f"\n── 项目: {name} ──")
 
-                # 离线检测
+                # 离线检测 + 自动启动
                 online = check_server_online(page, identifier)
                 if online is False:
-                    log_warn(f"  ❌ 服务离线！")
-                    offline_list.append(name)
+                    log_warn(f"  ❌ 服务离线，尝试自动启动...")
+                    started = start_server(page, identifier)
+                    if started:
+                        log(f"  start指令已发送，等待服务器启动（最多120秒）...")
+                        running = wait_until_running(page, identifier, max_wait=120, interval=10)
+                        if running:
+                            log(f"  ✅ 服务器已成功启动！")
+                            online = True
+                        else:
+                            log_warn(f"  ⚠️ 等待超时，服务器未能启动")
+                            offline_list.append(name)
+                    else:
+                        log_warn(f"  ❌ start指令发送失败")
+                        offline_list.append(name)
                 elif online is True:
                     log(f"  ✅ 服务在线")
                 else:
@@ -348,11 +436,11 @@ def run():
     log(f"续期: {len(renewed_list)}  跳过: {len(skipped_list)}  "
         f"离线: {len(offline_list)}  失败: {len(failed_list)}")
 
-    # 离线告警（最高优先级，单独推送）
+    # 离线告警（自动启动失败才推送）
     if offline_list:
-        lines = ["🚨 <b>ACLClouds 账号3 服务离线告警！</b>", ""]
+        lines = ["🚨 <b>ACLClouds 账号3 服务离线且启动失败！</b>", ""]
         lines += [f"• {n}" for n in offline_list]
-        lines += ["", "请立即检查服务状态！", "ACLClouds Auto Renew"]
+        lines += ["", "已尝试自动启动但超时，请手动检查！", "ACLClouds Auto Renew"]
         send_all("\n".join(lines))
 
     # 续期结果推送
