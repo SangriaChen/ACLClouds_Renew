@@ -474,7 +474,7 @@ if __name__ == "__main__":
             traceback.print_exc()
             all_failed.append(f"账号{account['index']}({em}) · 顶层异常: {str(ex)[:100]}")
 
-    # ── 汇总推送 ──────────────────────────────────────────
+    # ── 汇总推送（已修改：始终发送通知）────────────────────
     log("=" * 50)
     log(f"续期成功: {len(all_renewed)} 个")
     log(f"无需续期: {len(all_skipped)} 个")
@@ -493,4 +493,12 @@ if __name__ == "__main__":
         lines += ["", "ACLClouds Auto Renew"]
         send_all_push("\n".join(lines))
     else:
-        log("所有账号均无需续期，不发送推送")
+        # ★ 修改点：即使无需续期也发送通知
+        lines = ["ℹ️ <b>ACLClouds 续期状态：无需续期</b>", ""]
+        if all_skipped:
+            lines += [f"• {i}" for i in all_skipped]
+        else:
+            lines += ["• 未检测到需要续期的项目"]
+        lines += ["", "ACLClouds Auto Renew"]
+        send_all_push("\n".join(lines))
+        log("所有账号均无需续期，已发送通知")
