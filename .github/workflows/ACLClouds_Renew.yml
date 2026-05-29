@@ -34,7 +34,7 @@ jobs:
 
       - name: 安装依赖
         run: |
-          pip install playwright requests
+          pip install playwright requests PySocks
           playwright install chromium --with-deps
 
       - name: 下载并启动 Xray 代理
