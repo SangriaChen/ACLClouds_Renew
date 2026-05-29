@@ -95,10 +95,20 @@ def send_tg(text: str):
     if not TG_BOT_TOKEN or not TG_CHAT_ID:
         return
     try:
+        # 使用 PySocks 让 urllib 走 SOCKS5 代理，确保在 GitHub Actions 中能访问 Telegram API
+        import socks
+        import socket
+
+        old_socket = socket.socket
+        socks.set_default_proxy(socks.SOCKS5, "127.0.0.1", 10808)
+        socket.socket = socks.socksocket
+
         body = json.dumps({"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}).encode()
         req = Request(f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage",
                       data=body, headers={"Content-Type": "application/json"})
         urlopen(req, timeout=15)
+
+        socket.socket = old_socket
         log("TG 推送成功")
     except Exception as e:
         log_warn(f"TG 推送失败: {e}")
@@ -474,7 +484,7 @@ if __name__ == "__main__":
             traceback.print_exc()
             all_failed.append(f"账号{account['index']}({em}) · 顶层异常: {str(ex)[:100]}")
 
-    # ── 汇总推送（已修改：始终发送通知）────────────────────
+    # ── 汇总推送（始终发送通知）────────────────────
     log("=" * 50)
     log(f"续期成功: {len(all_renewed)} 个")
     log(f"无需续期: {len(all_skipped)} 个")
@@ -493,7 +503,7 @@ if __name__ == "__main__":
         lines += ["", "ACLClouds Auto Renew"]
         send_all_push("\n".join(lines))
     else:
-        # ★ 修改点：即使无需续期也发送通知
+        # 即使无需续期也发送通知
         lines = ["ℹ️ <b>ACLClouds 续期状态：无需续期</b>", ""]
         if all_skipped:
             lines += [f"• {i}" for i in all_skipped]
